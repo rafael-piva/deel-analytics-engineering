@@ -1,0 +1,29 @@
+# Credentials are read from environment variables (see .env.example), never stored here.
+# dbt picks this file up automatically when run from the project root.
+deel_ae:
+  target: "{{ env_var('DBT_TARGET', 'dev') }}"
+  outputs:
+    # Key-pair auth: works without MFA prompts on every run.
+    dev:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      private_key_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PATH', '') }}"
+      private_key_passphrase: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PASSPHRASE', '') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'TRANSFORMER') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'TRANSFORMING') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'DEEL_AE') }}"
+      schema: "{{ env_var('SNOWFLAKE_SCHEMA', 'DBT_DEV') }}"
+      threads: 4
+
+    # Browser SSO / MFA login: opens a browser tab on each dbt invocation.
+    dev_sso:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      authenticator: externalbrowser
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'TRANSFORMER') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'TRANSFORMING') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'DEEL_AE') }}"
+      schema: "{{ env_var('SNOWFLAKE_SCHEMA', 'DBT_DEV') }}"
+      threads: 4

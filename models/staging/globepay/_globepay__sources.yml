@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: globepay
+    description: Globepay payment reports, loaded as raw text by scripts/load_raw.py.
+    database: "{{ env_var('SNOWFLAKE_DATABASE', 'DEEL_AE') }}"
+    schema: "{{ env_var('SNOWFLAKE_RAW_SCHEMA', 'RAW') }}"
+    loaded_at_field: _loaded_at
+    tables:
+      - name: globepay_acceptance_report
+        description: One row per card payment attempt sent to Globepay.
+      - name: globepay_chargeback_report
+        description: Chargeback flag per Globepay transaction.
