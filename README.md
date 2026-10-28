@@ -3,6 +3,9 @@ repo to include the files for the senior analytics engineering home case for dee
 
 The challenge brief and source files are in [docs/](docs/hometaskassignmentanalyticsengineer).
 
+- [Part 1 — ingestion and modeling](docs/part_1_data_modeling.md): data exploration, model architecture, lineage,
+  and tips on macros, validation and documentation.
+
 ## Setup
 
 ### 1. Python + dbt
@@ -65,6 +68,6 @@ scripts/               Snowflake setup and raw data loader
 models/staging/        source definitions and 1:1 cleaned views over them
 models/intermediate/   joins and business logic
 models/marts/          tables for the analyst
-analyses/              ad-hoc SQL answering the analyst's questions
+analyses/              versioned ad-hoc SQL (data exploration, analyst questions)
 macros/, tests/        reusable SQL and custom data tests
 ```

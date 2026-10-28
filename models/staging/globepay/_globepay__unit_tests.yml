@@ -1,0 +1,15 @@
+unit_tests:
+  - name: test_stg_globepay__acceptances_converts_amount_to_usd
+    description: amount_usd divides the local amount by the rate of the transaction's own currency.
+    model: stg_globepay__acceptances
+    given:
+      - input: source('globepay', 'globepay_acceptance_report')
+        rows:
+          - {external_ref: a, ref: evt_a, state: ACCEPTED, country: US, currency: USD, amount: '100.00', cvv_provided: 'FALSE', date_time: '2019-01-01T00:00:00.000Z', rates: '{"USD":1,"EUR":0.9,"MXN":25}'}
+          - {external_ref: b, ref: evt_b, state: DECLINED, country: MX, currency: MXN, amount: '2500.00', cvv_provided: 'TRUE', date_time: '2019-01-01T04:48:00.000Z', rates: '{"USD":1,"EUR":0.9,"MXN":25}'}
+          - {external_ref: c, ref: evt_c, state: ACCEPTED, country: FR, currency: EUR, amount: '90.00', cvv_provided: 'FALSE', date_time: '2019-01-01T09:36:00.000Z', rates: '{"USD":1,"EUR":0.9,"MXN":25}'}
+    expect:
+      rows:
+        - {transaction_id: a, fx_rate_to_usd: 1, amount_usd: 100.00, is_accepted: true}
+        - {transaction_id: b, fx_rate_to_usd: 25, amount_usd: 100.00, is_accepted: false}
+        - {transaction_id: c, fx_rate_to_usd: 0.9, amount_usd: 100.00, is_accepted: true}

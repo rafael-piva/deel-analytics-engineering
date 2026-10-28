@@ -1,0 +1,52 @@
+version: 2
+
+models:
+  - name: fct_transactions
+    description: >
+      One row per card payment attempt Deel sent to Globepay, with outcome,
+      local and USD amounts, and chargeback status. Answers acceptance rate,
+      declined volume by country and missing chargeback questions.
+    data_tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "not (coalesce(is_chargeback, false) and not is_accepted)"
+          description: Only accepted transactions can be charged back.
+    columns:
+      - name: transaction_id
+        description: Globepay transaction identifier.
+        data_tests:
+          - unique
+          - not_null
+      - name: globepay_event_id
+        description: Globepay event identifier.
+      - name: transaction_state
+        description: ACCEPTED or DECLINED.
+      - name: country_code
+        description: Two-letter country of the card as sent by Globepay ('UK' for the United Kingdom).
+      - name: currency_code
+        description: Three-letter ISO currency of the transaction.
+      - name: amount_local
+        description: Transaction amount in currency_code.
+      - name: fx_rate_to_usd
+        description: Units of currency_code per 1 USD, as sent by Globepay.
+      - name: amount_usd
+        description: Transaction amount in USD.
+      - name: is_accepted
+        description: True when the payment was accepted.
+      - name: is_cvv_provided
+        description: Whether the CVV was sent with the payment request.
+      - name: is_chargeback
+        description: Whether the transaction was charged back. Null when chargeback data is missing.
+      - name: has_chargeback_data
+        description: False when Globepay sent no chargeback record for the transaction.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [true]
+                quote: false
+              config:
+                severity: warn
+      - name: transacted_date
+        description: UTC date of the transaction.
+      - name: transacted_at
+        description: UTC timestamp of the transaction.

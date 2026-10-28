@@ -16,12 +16,15 @@ clean-targets:
 
 models:
   deel_ae:
+    +persist_docs:
+      relation: true
+      columns: true
     staging:
       +schema: staging
       +materialized: view
     intermediate:
       +schema: intermediate
-      +materialized: ephemeral
+      +materialized: view
     marts:
       +schema: marts
       +materialized: table

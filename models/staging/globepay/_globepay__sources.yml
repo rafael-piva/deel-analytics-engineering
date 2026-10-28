@@ -5,9 +5,42 @@ sources:
     description: Globepay payment reports, loaded as raw text by scripts/load_raw.py.
     database: "{{ env_var('SNOWFLAKE_DATABASE', 'DEEL_AE') }}"
     schema: "{{ env_var('SNOWFLAKE_RAW_SCHEMA', 'RAW') }}"
-    loaded_at_field: _loaded_at
+    config:
+      loaded_at_field: _loaded_at
     tables:
       - name: globepay_acceptance_report
         description: One row per card payment attempt sent to Globepay.
+        columns:
+          - name: external_ref
+            data_tests:
+              - unique
+              - not_null
+          # status and source hold a single value; staging drops them, these tests catch a change.
+          - name: status
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: ['TRUE']
+          - name: source
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: ['GLOBALPAY']
+
       - name: globepay_chargeback_report
         description: Chargeback flag per Globepay transaction.
+        columns:
+          - name: external_ref
+            data_tests:
+              - unique
+              - not_null
+          - name: status
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: ['TRUE']
+          - name: source
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: ['GLOBALPAY']

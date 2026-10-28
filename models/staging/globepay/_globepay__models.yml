@@ -1,0 +1,87 @@
+version: 2
+
+models:
+  - name: stg_globepay__acceptances
+    description: >
+      One row per card payment attempt processed by Globepay, typed and with the
+      amount converted to USD using the rate Globepay sent with the transaction.
+    columns:
+      - name: transaction_id
+        description: Globepay transaction identifier (external_ref). Joins to the chargeback report.
+        data_tests:
+          - unique
+          - not_null
+      - name: globepay_event_id
+        description: Globepay event identifier (ref), prefixed evt_.
+        data_tests:
+          - unique
+          - not_null
+      - name: transaction_state
+        description: Outcome of the payment attempt.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['ACCEPTED', 'DECLINED']
+      - name: country_code
+        description: Two-letter country of the card as sent by Globepay. Note the UK uses 'UK', not ISO 'GB'.
+        data_tests:
+          - not_null
+      - name: currency_code
+        description: Three-letter ISO currency of the transaction amount.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['USD', 'CAD', 'EUR', 'MXN', 'GBP']
+      - name: amount_local
+        description: Transaction amount in currency_code.
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+              config:
+                severity: warn
+      - name: fx_rates
+        description: Full rates object Globepay sent with the transaction (units of currency per 1 USD).
+      - name: fx_rate_to_usd
+        description: Rate for currency_code taken from fx_rates; amount_local / fx_rate_to_usd gives USD.
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
+      - name: amount_usd
+        description: Transaction amount converted to USD.
+        data_tests:
+          - not_null
+      - name: is_accepted
+        description: True when transaction_state is ACCEPTED.
+      - name: is_cvv_provided
+        description: Whether the card CVV was sent with the payment request.
+      - name: transacted_at
+        description: Time of the transaction, in UTC.
+        data_tests:
+          - not_null
+      - name: _loaded_at
+        description: When the raw row was loaded into Snowflake.
+
+  - name: stg_globepay__chargebacks
+    description: One row per Globepay transaction with its chargeback flag.
+    columns:
+      - name: transaction_id
+        description: Globepay transaction identifier (external_ref).
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_globepay__acceptances')
+                field: transaction_id
+      - name: is_chargeback
+        description: Whether the transaction was charged back.
+        data_tests:
+          - not_null
+      - name: _loaded_at
+        description: When the raw row was loaded into Snowflake.
