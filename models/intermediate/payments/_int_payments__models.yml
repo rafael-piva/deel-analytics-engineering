@@ -1,0 +1,14 @@
+version: 2
+
+models:
+  - name: int_transactions_joined
+    description: Globepay acceptances joined to their chargeback record, one row per transaction.
+    columns:
+      - name: transaction_id
+        data_tests:
+          - unique
+          - not_null
+      - name: is_chargeback
+        description: Null when Globepay sent no chargeback record for the transaction.
+      - name: has_chargeback_data
+        description: True when a chargeback record exists for the transaction.

@@ -1,0 +1,9 @@
+.DS_Store
+.venv/
+.env
+target/
+dbt_packages/
+logs/
+*.p8
+*.pem
+.user.yml
