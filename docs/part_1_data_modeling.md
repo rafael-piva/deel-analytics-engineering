@@ -92,6 +92,7 @@ I followed dbt's [project structure guide](https://docs.getdbt.com/best-practice
 | staging | `stg_globepay__chargebacks` | view | transaction | Renames and casts the chargeback flag. |
 | intermediate | `int_transactions_joined` | view | transaction | Left join of acceptances to chargebacks, adds `has_chargeback_data`. |
 | marts | `fct_transactions` | table | transaction | The table the analyst uses (Part 2). |
+| reporting | `rpt_acceptance_rate_daily`, `rpt_declined_transactions_by_country`, `rpt_transactions_missing_chargeback_data` | table | day / country / transaction | One model per Part 2 question, built on `fct_transactions`. |
 
 `fct_transactions` has `transaction_id`, `globepay_event_id`, `transaction_state`, `country_code`, `currency_code`,
 `amount_local`, `fx_rate_to_usd`, `amount_usd`, `is_accepted`, `is_cvv_provided`, `is_chargeback` (null when there's
@@ -105,12 +106,16 @@ Some of the choices:
 - The USD conversion is in staging because it only uses columns from the same row, the same as converting cents to
   dollars.
 - The intermediate model is a view rather than ephemeral, so it can be tested and queried when debugging.
+- The reporting layer isn't one of dbt's standard layers. I added it so the Part 2 answers are models that get
+  built and tested on every run, instead of saved queries that could break without anyone noticing. Marts stay
+  generic; reporting models are shaped for a specific question.
 - There are no dimension tables yet. With six countries a `dim_country` would only add a join. It makes sense once
   country names, regions or Deel client data are added.
 - Descriptions are persisted to Snowflake (`persist_docs`), so they show up as comments in Snowsight.
 
-In dev, models build into `DBT_DEV_STAGING`, `DBT_DEV_INTERMEDIATE` and `DBT_DEV_MARTS`. With `--target prod` they
-build into `STAGING`, `INTERMEDIATE` and `MARTS` (see [generate_schema_name](../macros/generate_schema_name.sql)).
+In dev, models build into `DBT_DEV_STAGING`, `DBT_DEV_INTERMEDIATE`, `DBT_DEV_MARTS` and `DBT_DEV_REPORTING`. With
+`--target prod` they build into `STAGING`, `INTERMEDIATE`, `MARTS` and `REPORTING` (see
+[generate_schema_name](../macros/generate_schema_name.sql)).
 
 ## 3. Lineage
 
@@ -123,6 +128,9 @@ flowchart LR
     stg_a --> int[int_transactions_joined]
     stg_c --> int
     int --> fct[fct_transactions]
+    fct --> rpt_a[rpt_acceptance_rate_daily]
+    fct --> rpt_d[rpt_declined_transactions_by_country]
+    fct --> rpt_m[rpt_transactions_missing_chargeback_data]
 ```
 
 For the interactive graph with column docs and tests:
@@ -156,6 +164,7 @@ Tests sit at each layer, so a problem gets caught close to where it starts:
 | staging, unit test | `amount_usd` uses the rate of the transaction's own currency (USD, MXN and EUR cases) |
 | intermediate | `unique` / `not_null` on `transaction_id`, which catches a join that duplicates rows |
 | marts | `unique` / `not_null`; only accepted transactions can be charged back; missing chargeback data (warn); an enforced model contract |
+| reporting | `unique` / `not_null` on each model's grain; acceptance rate between 0 and 1; a singular test that reporting totals match `fct_transactions` |
 
 For production I would also add:
 
@@ -169,7 +178,7 @@ For production I would also add:
 
 ### Documentation
 
-- Every model, and every column in staging and marts, has a description in YAML next to the SQL.
+- Every model, and every column in staging, marts and reporting, has a description in YAML next to the SQL.
 - `persist_docs` writes them to Snowflake as table and column comments.
 - `dbt docs generate` / `dbt docs serve` gives a searchable catalog and the lineage graph.
 - As the project grows, `{% docs %}` blocks avoid repeating the same definition across layers (`transaction_id` is

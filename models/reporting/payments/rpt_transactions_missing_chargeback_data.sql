@@ -7,4 +7,3 @@ select
     amount_usd
 from {{ ref('fct_transactions') }}
 where not has_chargeback_data
-order by transacted_at

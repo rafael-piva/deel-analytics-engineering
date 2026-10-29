@@ -5,8 +5,8 @@ The challenge brief and source files are in [docs/](docs/hometaskassignmentanaly
 
 - [Part 1: ingestion and modeling](docs/part_1_data_modeling.md): data exploration, model architecture, lineage,
   and tips on macros, validation and documentation.
-- [Part 2: production model and answers](docs/part_2_analysis.md): `fct_transactions` and the queries answering
-  the analyst's three questions.
+- [Part 2: production model and answers](docs/part_2_analysis.md): `fct_transactions`, the reporting models and
+  the answers to the analyst's three questions.
 
 ## Setup
 
@@ -63,8 +63,8 @@ dbt reads them as sources, declared in [models/staging/globepay/_globepay__sourc
 ### 5. Build
 
 ```bash
-dbt build                  # dev: DBT_DEV_STAGING, DBT_DEV_INTERMEDIATE, DBT_DEV_MARTS
-dbt build --target prod    # prod: STAGING, INTERMEDIATE, MARTS
+dbt build                  # dev: DBT_DEV_STAGING, DBT_DEV_INTERMEDIATE, DBT_DEV_MARTS, DBT_DEV_REPORTING
+dbt build --target prod    # prod: STAGING, INTERMEDIATE, MARTS, REPORTING
 ```
 
 ## Project layout
@@ -74,7 +74,8 @@ data/                  raw Globepay CSV reports
 scripts/               Snowflake setup and raw data loader
 models/staging/        source definitions and 1:1 cleaned views over them
 models/intermediate/   joins and business logic
-models/marts/          tables for the analyst
-analyses/              versioned ad-hoc SQL (data exploration, analyst questions)
-macros/, tests/        reusable SQL and custom data tests
+models/marts/          generic tables for the analyst
+models/reporting/      one model per analyst question
+analyses/              versioned exploration queries
+macros/, tests/        schema macro and singular data tests
 ```

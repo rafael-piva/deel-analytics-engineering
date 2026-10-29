@@ -1,0 +1,64 @@
+version: 2
+
+models:
+  - name: rpt_acceptance_rate_daily
+    description: >
+      Daily acceptance rate of Globepay transactions. To roll up to week or month,
+      sum the counts and amounts and divide again; don't average the daily rates.
+    columns:
+      - name: transacted_date
+        description: UTC date.
+        data_tests:
+          - unique
+          - not_null
+      - name: transactions
+        description: Payment attempts on the day.
+      - name: accepted_transactions
+        description: Accepted payment attempts on the day.
+      - name: acceptance_rate
+        description: accepted_transactions / transactions.
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between 0 and 1"
+      - name: total_amount_usd
+        description: Amount of all payment attempts, in USD.
+      - name: accepted_amount_usd
+        description: Amount of accepted payment attempts, in USD.
+      - name: acceptance_rate_by_amount
+        description: accepted_amount_usd / total_amount_usd.
+
+  - name: rpt_declined_transactions_by_country
+    description: Declined transaction count and USD amount per card country, over the whole period.
+    columns:
+      - name: country_code
+        description: Card country as sent by Globepay.
+        data_tests:
+          - unique
+          - not_null
+      - name: transactions
+        description: All payment attempts from the country.
+      - name: declined_transactions
+        description: Declined payment attempts from the country.
+      - name: declined_amount_usd
+        description: Amount of declined payment attempts, in USD.
+
+  - name: rpt_transactions_missing_chargeback_data
+    description: Transactions that have no record in the Globepay chargeback report.
+    columns:
+      - name: transaction_id
+        description: Globepay transaction identifier.
+        data_tests:
+          - unique
+          - not_null
+      - name: globepay_event_id
+        description: Globepay event identifier.
+      - name: transacted_at
+        description: UTC timestamp of the transaction.
+      - name: transaction_state
+        description: ACCEPTED or DECLINED.
+      - name: country_code
+        description: Card country as sent by Globepay.
+      - name: amount_usd
+        description: Transaction amount in USD.
