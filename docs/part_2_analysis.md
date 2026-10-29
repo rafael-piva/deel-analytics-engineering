@@ -1,9 +1,9 @@
 # Part 2: Production model and answers
 
-## The model
+## The models
 
-Use `fct_transactions` (schema `MARTS` in prod, `DBT_DEV_MARTS` in dev). It has one row per payment attempt Deel
-sent to Globepay, so any count or sum over it is a count or sum of transactions.
+`fct_transactions` (schema `MARTS` in prod, `DBT_DEV_MARTS` in dev) is the base table. It has one row per payment
+attempt Deel sent to Globepay, so any count or sum over it is a count or sum of transactions.
 
 | Column | Use it for |
 |---|---|
@@ -15,38 +15,57 @@ sent to Globepay, so any count or sum over it is a count or sum of transactions.
 | `is_chargeback` | Charged back or not. Null when Globepay sent no chargeback record. |
 | `has_chargeback_data` | False when the chargeback record is missing |
 
-What makes it production ready:
+On top of it, a reporting layer (schema `REPORTING` in prod, `DBT_DEV_REPORTING` in dev) has one model per
+question, built and tested on every run like the rest of the project:
 
-- It's a table rebuilt on every run from tested staging and intermediate models, with 34 data and unit tests
-  running in the same `dbt build`.
-- It has an enforced contract: if a change upstream renames a column or changes a type, the build fails instead of
-  silently breaking queries on top of it.
-- `dbt build --target prod` builds it into clean `STAGING` / `INTERMEDIATE` / `MARTS` schemas, separate from dev.
+| Model | Grain | Question |
+|---|---|---|
+| [`rpt_acceptance_rate_daily`](../models/reporting/payments/rpt_acceptance_rate_daily.sql) | day | 1. Acceptance rate over time |
+| [`rpt_declined_transactions_by_country`](../models/reporting/payments/rpt_declined_transactions_by_country.sql) | country | 2. Declined amount by country |
+| [`rpt_transactions_missing_chargeback_data`](../models/reporting/payments/rpt_transactions_missing_chargeback_data.sql) | transaction | 3. Missing chargeback data |
+
+What makes this production ready:
+
+- Everything is rebuilt on each `dbt build`, with 43 data and unit tests running in the same command, including a
+  test that the reporting totals match `fct_transactions`.
+- `fct_transactions` has an enforced contract: if a change upstream renames a column or changes a type, the build
+  fails instead of silently breaking queries on top of it.
+- `dbt build --target prod` builds into clean `STAGING` / `INTERMEDIATE` / `MARTS` / `REPORTING` schemas,
+  separate from dev.
 - Column descriptions are visible in Snowsight as comments.
-
-The queries below are in [analyses/part_2](../analyses/part_2). `dbt compile` turns them into plain SQL in
-`target/compiled/`, or `dbt show -s <name>` runs them directly.
 
 ## 1. What is the acceptance rate over time?
 
-Acceptance rate is accepted transactions over all transactions. I also added the rate weighted by USD amount, in
-case the analyst cares about volume rather than count.
+Acceptance rate is accepted transactions over all transactions. The model also has the rate weighted by USD amount,
+in case the analyst cares about volume rather than count.
 
 ```sql
-{% set grain = var('grain', 'month') %}
-
 select
-    date_trunc({{ grain }}, transacted_date) as period_start,
+    transacted_date,
     count(*) as transactions,
     count_if(is_accepted) as accepted_transactions,
-    round(accepted_transactions / transactions, 4) as acceptance_rate,
-    round(sum(iff(is_accepted, amount_usd, 0)) / sum(amount_usd), 4) as acceptance_rate_by_amount
+    accepted_transactions / transactions as acceptance_rate,
+    sum(amount_usd) as total_amount_usd,
+    sum(iff(is_accepted, amount_usd, 0)) as accepted_amount_usd,
+    accepted_amount_usd / nullif(total_amount_usd, 0) as acceptance_rate_by_amount
 from {{ ref('fct_transactions') }}
-group by period_start
-order by period_start
+group by transacted_date
 ```
 
-`dbt show -s acceptance_rate_over_time` gives it by month, and `--vars '{grain: week}'` (or `day`) changes the grain.
+The model is daily so it can be rolled up to any period. To get months, sum the counts and divide again (averaging
+the daily rates would weight every day the same):
+
+```sql
+select
+    date_trunc(month, transacted_date) as month,
+    sum(transactions) as transactions,
+    sum(accepted_transactions) as accepted_transactions,
+    accepted_transactions / transactions as acceptance_rate,
+    sum(accepted_amount_usd) / sum(total_amount_usd) as acceptance_rate_by_amount
+from reporting.rpt_acceptance_rate_daily
+group by month
+order by month
+```
 
 | Month | Transactions | Accepted | Acceptance rate | By USD amount |
 |---|---|---|---|---|
@@ -75,15 +94,25 @@ transactions a week; there's no trend up or down.
 
 Declined amounts have to be summed in USD. Summing `amount_local` would add euros, pesos and dollars together.
 
+The model keeps every country, so the $25M threshold stays in the question rather than in the model:
+
 ```sql
 select
     country_code,
-    count(*) as declined_transactions,
-    sum(amount_usd) as declined_amount_usd
+    count(*) as transactions,
+    count_if(not is_accepted) as declined_transactions,
+    sum(iff(not is_accepted, amount_usd, 0)) as declined_amount_usd
 from {{ ref('fct_transactions') }}
-where not is_accepted
 group by country_code
-having declined_amount_usd > 25000000
+```
+
+```sql
+select
+    country_code,
+    declined_transactions,
+    declined_amount_usd
+from reporting.rpt_declined_transactions_by_country
+where declined_amount_usd > 25000000
 order by declined_amount_usd desc
 ```
 
@@ -112,11 +141,12 @@ select
     amount_usd
 from {{ ref('fct_transactions') }}
 where not has_chargeback_data
-order by transacted_at
 ```
 
-**Answer:** none. All 5,430 transactions have a chargeback record. The query returns no rows today, and the
-`has_chargeback_data` test in the model warns on the next build if that changes.
+The analyst can query `reporting.rpt_transactions_missing_chargeback_data` directly.
+
+**Answer:** none. All 5,430 transactions have a chargeback record, so the model is empty today. The
+`has_chargeback_data` test on `fct_transactions` warns on the next build if that changes.
 
 Two things to keep in mind:
 
