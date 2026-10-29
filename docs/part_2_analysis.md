@@ -76,13 +76,13 @@ order by month
 | 2019-05 | 930 | 645 | 69.4% | 68.8% |
 | 2019-06 | 900 | 645 | 71.7% | 71.0% |
 
-Weekly (weeks start on Monday, so the first week only has Jan 1 to 6):
+Weekly (weeks start on Monday, so week 1 only has Jan 1 to 6; week 14 starts Apr 1):
 
 ```mermaid
 xychart-beta
     title "Weekly acceptance rate (%)"
-    x-axis ["Dec 31", "Jan 7", "Jan 14", "Jan 21", "Jan 28", "Feb 4", "Feb 11", "Feb 18", "Feb 25", "Mar 4", "Mar 11", "Mar 18", "Mar 25", "Apr 1", "Apr 8", "Apr 15", "Apr 22", "Apr 29", "May 6", "May 13", "May 20", "May 27", "Jun 3", "Jun 10", "Jun 17", "Jun 24"]
-    y-axis "Acceptance rate (%)" 55 --> 80
+    x-axis "Week (1 = Dec 31 to Jan 6, 26 = Jun 24 to 30)" ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26"]
+    y-axis "Acceptance rate (%)" 60 --> 78
     line [73.3, 62.4, 72.9, 66.7, 73.3, 69.0, 70.5, 69.5, 68.6, 72.4, 66.2, 66.2, 73.3, 63.8, 72.4, 71.0, 66.7, 69.0, 64.8, 71.9, 73.8, 66.2, 73.3, 74.8, 69.5, 67.6]
 ```
 
