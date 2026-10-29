@@ -3,8 +3,10 @@ repo to include the files for the senior analytics engineering home case for dee
 
 The challenge brief and source files are in [docs/](docs/hometaskassignmentanalyticsengineer).
 
-- [Part 1 — ingestion and modeling](docs/part_1_data_modeling.md): data exploration, model architecture, lineage,
+- [Part 1: ingestion and modeling](docs/part_1_data_modeling.md): data exploration, model architecture, lineage,
   and tips on macros, validation and documentation.
+- [Part 2: production model and answers](docs/part_2_analysis.md): `fct_transactions` and the queries answering
+  the analyst's three questions.
 
 ## Setup
 
@@ -18,7 +20,7 @@ pip install -r requirements.txt
 
 ### 2. Snowflake
 
-Generate a key pair for the dbt service user:
+Generate a key pair:
 
 ```bash
 openssl genrsa 2048 | openssl pkcs8 -topk8 -inform PEM -out ~/.ssh/snowflake_dbt_key.p8 -nocrypt
@@ -34,8 +36,6 @@ alter user <your_user> set rsa_public_key = '<contents of snowflake_dbt_key.pub,
 or a dedicated service user: run [scripts/snowflake_setup.sql](scripts/snowflake_setup.sql) as ACCOUNTADMIN with the
 key pasted in place of `<PUBLIC_KEY>`. It creates the `TRANSFORMING` warehouse, `DEEL_AE` database,
 `TRANSFORMER` role and `DBT_USER`.
-
-`DBT_TARGET=dev_sso` (browser login) only works on accounts with an SSO identity provider configured.
 
 ### 3. Connect dbt
 
@@ -59,6 +59,13 @@ python scripts/load_raw.py
 
 dbt reads them as sources, declared in [models/staging/globepay/_globepay__sources.yml](models/staging/globepay/_globepay__sources.yml):
 `{{ source('globepay', 'globepay_acceptance_report') }}` and `{{ source('globepay', 'globepay_chargeback_report') }}`.
+
+### 5. Build
+
+```bash
+dbt build                  # dev: DBT_DEV_STAGING, DBT_DEV_INTERMEDIATE, DBT_DEV_MARTS
+dbt build --target prod    # prod: STAGING, INTERMEDIATE, MARTS
+```
 
 ## Project layout
 

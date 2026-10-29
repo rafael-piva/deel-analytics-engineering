@@ -3,9 +3,11 @@ version: 2
 models:
   - name: fct_transactions
     description: >
-      One row per card payment attempt Deel sent to Globepay, with outcome,
-      local and USD amounts, and chargeback status. Answers acceptance rate,
-      declined volume by country and missing chargeback questions.
+      One row per card payment attempt Deel sent to Globepay, with the outcome,
+      local and USD amounts, and chargeback status.
+    config:
+      contract:
+        enforced: true
     data_tests:
       - dbt_utils.expression_is_true:
           arguments:
@@ -13,31 +15,45 @@ models:
           description: Only accepted transactions can be charged back.
     columns:
       - name: transaction_id
+        data_type: varchar
         description: Globepay transaction identifier.
+        constraints:
+          - type: not_null
         data_tests:
           - unique
           - not_null
       - name: globepay_event_id
+        data_type: varchar
         description: Globepay event identifier.
       - name: transaction_state
+        data_type: varchar
         description: ACCEPTED or DECLINED.
       - name: country_code
-        description: Two-letter country of the card as sent by Globepay ('UK' for the United Kingdom).
+        data_type: varchar
+        description: Card country as sent by Globepay ('UK' for the United Kingdom).
       - name: currency_code
-        description: Three-letter ISO currency of the transaction.
+        data_type: varchar
+        description: Currency of the transaction.
       - name: amount_local
+        data_type: number(18, 2)
         description: Transaction amount in currency_code.
       - name: fx_rate_to_usd
+        data_type: float
         description: Units of currency_code per 1 USD, as sent by Globepay.
       - name: amount_usd
+        data_type: number(18, 2)
         description: Transaction amount in USD.
       - name: is_accepted
+        data_type: boolean
         description: True when the payment was accepted.
       - name: is_cvv_provided
+        data_type: boolean
         description: Whether the CVV was sent with the payment request.
       - name: is_chargeback
-        description: Whether the transaction was charged back. Null when chargeback data is missing.
+        data_type: boolean
+        description: Whether the transaction was charged back. Null when there is no chargeback record.
       - name: has_chargeback_data
+        data_type: boolean
         description: False when Globepay sent no chargeback record for the transaction.
         data_tests:
           - accepted_values:
@@ -47,6 +63,8 @@ models:
               config:
                 severity: warn
       - name: transacted_date
+        data_type: date
         description: UTC date of the transaction.
       - name: transacted_at
+        data_type: timestamp_ntz
         description: UTC timestamp of the transaction.

@@ -1,12 +1,5 @@
-"""Load the Globepay CSV reports into Snowflake's RAW schema.
+"""Loads the Globepay CSVs into DEEL_AE.RAW as text, replacing the tables on each run.
 
-Plays the role of the EL tool (Fivetran, Airbyte, ...) that would land the
-provider's files in the warehouse. Every column is loaded as text exactly as
-received; typing and cleaning happen in dbt staging models.
-
-Each run fully reloads the tables, so it is safe to re-run.
-
-Usage:
     set -a; source .env; set +a
     python scripts/load_raw.py
 """
@@ -21,7 +14,6 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DATABASE = os.environ.get("SNOWFLAKE_DATABASE", "DEEL_AE")
 RAW_SCHEMA = os.environ.get("SNOWFLAKE_RAW_SCHEMA", "RAW")
 
-# table name -> CSV file in data/
 TABLES = {
     "GLOBEPAY_ACCEPTANCE_REPORT": "globepay_acceptance_report.csv",
     "GLOBEPAY_CHARGEBACK_REPORT": "globepay_chargeback_report.csv",
@@ -35,12 +27,9 @@ def connect():
         role=os.environ.get("SNOWFLAKE_ROLE", "TRANSFORMER"),
         warehouse=os.environ.get("SNOWFLAKE_WAREHOUSE", "TRANSFORMING"),
     )
-    if os.environ.get("DBT_TARGET") == "dev_sso":
-        params["authenticator"] = "externalbrowser"
-    else:
-        params["private_key_file"] = os.path.expanduser(os.environ["SNOWFLAKE_PRIVATE_KEY_PATH"])
-        if os.environ.get("SNOWFLAKE_PRIVATE_KEY_PASSPHRASE"):
-            params["private_key_file_pwd"] = os.environ["SNOWFLAKE_PRIVATE_KEY_PASSPHRASE"]
+    params["private_key_file"] = os.path.expanduser(os.environ["SNOWFLAKE_PRIVATE_KEY_PATH"])
+    if os.environ.get("SNOWFLAKE_PRIVATE_KEY_PASSPHRASE"):
+        params["private_key_file_pwd"] = os.environ["SNOWFLAKE_PRIVATE_KEY_PASSPHRASE"]
     return snowflake.connector.connect(**params)
 
 
@@ -60,7 +49,6 @@ def load_table(cur, table, path):
         )
     """)
 
-    # Upload to the table's internal stage, then copy in with file metadata.
     cur.execute(f"put 'file://{path}' @%{table} overwrite = true auto_compress = true")
     positional = ", ".join(f"t.${i}" for i in range(1, len(columns) + 1))
     cur.execute(f"""
