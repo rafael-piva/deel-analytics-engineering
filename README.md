@@ -1,7 +1,6 @@
 # deel-ae
-repo to include the files for the senior analytics engineering home case for deel
-
-The challenge brief and source files are in [docs/](docs/hometaskassignmentanalyticsengineer).
+Solution to Deel's analytics engineering home task: modeling Globepay card payment data with dbt on Snowflake.
+The two Globepay reports provided with the task are in [data/](data).
 
 - [Part 1: ingestion and modeling](docs/part_1_data_modeling.md): data exploration, model architecture, lineage,
   and tips on macros, validation and documentation.
